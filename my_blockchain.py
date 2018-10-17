@@ -1,8 +1,9 @@
 import hashlib
-from time import time
+import time
 from datetime import datetime
 import json
 import my_block, my_transaction
+from queue import Queue
 
 Block = my_block.Block
 
@@ -25,54 +26,49 @@ class Blockchain(object):
         return block.hash 
 
 
-    def add_transaction(self, _from, _to, _amount):
-        txs = []
-        items = str(_from)+ str(_to) + str(_amount)
-        items = items.encode()
-        tx = {
-            'sender': _from,
-            'recipient': _to,
-            'amount': _amount,
-            'transaction_hash': hashlib.sha256(items).hexdigest()
-        }
-        txs.append(tx)
-        self.current_transactions.append(tx)
-        print('txs = ', txs)
-        print("add transaction: ", self.current_transactions)
+    def add_transaction(self, queue_mine_transaction_wait):
+        print('ahihihi')
         
+        while len(list(queue_mine_transaction_wait.queue)) > 0:
+            _from = queue_mine_transaction_wait.get()
+            _to = queue_mine_transaction_wait.get()
+            _amount = queue_mine_transaction_wait.get()
+            print("_from = ", _from)
+            print("_to = ", _to)
+            print("_amount = ", _amount)
+
+            items = str(_from)+ str(_to) + str(_amount)
+            items = items.encode()
+            tx = {
+                'sender': _from,
+                'recipient': _to,
+                'amount': _amount,
+                'transaction_hash': hashlib.sha256(items).hexdigest()
+            }
+            print(tx)
+            self.current_transactions.append(tx)
+            print("current .. = ", self.current_transactions)
+            return self.add_block()
+    
 
     def add_block(self):
-        print("Number of block in BC: ", len(self.blocks))
+        print("adsdfjdfjd")
         previous_block = self.blocks[-1]
         
         current_block = Block.from_previous(previous_block,"ahihi" )
         current_block.hash = self.proof_of_work(current_block)
 
         # add transactions(s)
-        # my_transaction.add_transaction()
-        print('current_transaction in add block : ', self.current_transactions)
+        print(" ham addblock , self.current_transactions = ",  self.current_transactions)
         current_block.transactions = self.current_transactions
+        print("current_block.transactions  = ", current_block.transactions )
         # add new block on the chain
-        print("previous_block.hash = ",previous_block.hash )
-        print("current_block.previous_hash = ", current_block.previous_hash)
-        print("current_block.index = " , current_block.index)
-        print("previous_block.index = ", previous_block.index)
-        current_block_json = {
-            'index': current_block.index,
-            'previous_hash': current_block.previous_hash,
-            'timestamp': current_block.timestamp,
-            'data': current_block.data,
-            'transactions': current_block.transactions,
-            'proof-of-work': current_block.nonce,
-            'hash': current_block.hash
-        }
-        print(current_block_json)
         if previous_block.hash == current_block.previous_hash and current_block.index > previous_block.index:
             self.current_transactions = []
             self.blocks.append(current_block)
-            print("Number of block in BC: ", len(self.blocks))
-            print("ket qua ")
-            print(self.info_all_blocks())
+            print(current_block.hash)
+            print("current_block.proof-of-work = ", current_block.nonce)
+            print("current block . transaction = ", current_block.transactions)
             return True
         else:
             return False

@@ -4,15 +4,27 @@ import time
 import json
 import my_transaction
 import my_blockchain 
+from threading import Thread
+from queue import Queue
 
 
 app = Flask(__name__)
 logging.basicConfig(level = logging.DEBUG)
 BC = my_blockchain.Blockchain()
+queue_mine_transaction_wait = Queue()
+queue_mine_transaction = Queue()
 
-@app.route('/api/v1/mine', methods=['GET'])
-def mine():# create a new block.  1 block duoc tao thanh >> add vao chain
-    pass
+
+def mine():
+    count_time = 0
+    while True:
+        count_time += 1
+        logging.info('watching... ')
+        while len(list(queue_mine_transaction_wait.queue)) < 7 and count_time == 3: 
+            logging.info("watchin mining...")
+            BC.add_transaction(queue_mine_transaction_wait)
+            time.sleep(3) # sleep 3s to calculate block
+        time.sleep(1)
 
 
 # create a new transaction FOCUS
@@ -22,15 +34,14 @@ def new_transaction():
     _to = request.json.get('to')
     _amount = request.json.get('amount')
     if _from and _to and _amount:
-        BC.add_transaction(
-            _from,
-            _to,
-            _amount
-        )
-        if BC.add_block():
+        print(" co nhan duoc du lieu dau vao !")
+        queue_mine_transaction_wait.put(_from)
+        queue_mine_transaction_wait.put(_to)
+        queue_mine_transaction_wait.put(_amount)
+        if len(list(queue_mine_transaction_wait.queue)) == 0:
             return jsonify(BC.info_current_block())
         else:
-            return jsonify({'status': 'failed'})
+            return jsonify({'status': 'in process'})
     else:
         return jsonify({'status': 'failed'})
 
@@ -65,4 +76,6 @@ def consensus():
 
 if __name__ == "__main__":
     app.debug = True
+    watch_miner = Thread(target=mine)
+    watch_miner.start()
     app.run(host='0.0.0.0', port=4444)
