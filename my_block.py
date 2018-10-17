@@ -4,18 +4,19 @@ import hashlib
 import my_blockchain
 
 class Block():
-    def __init__(self, index, previous_hash, timestamp, data, nonce, hashvalue=''):
+    def __init__(self, index, previous_hash, timestamp, data, nonce,transactions=[], hashvalue=''):
         self.index = index
         self.previous_hash = previous_hash
         self.timestamp = timestamp
         self.data = data
         self.nonce = nonce
+        self.transactions = transactions
         self.hash = hashvalue
     
     def calculate_hash(self):
         cal = str(self.index) + str(self.previous_hash) + str(self.timestamp) + str(self.data) + str(self.nonce)
         cal = cal.encode()
-        cal_hash = hashlib.sha256(cal).hexdigest()
+        cal_hash = hashlib.sha1(cal).hexdigest()
         # self.hash = cal_hash
         return cal_hash
 
@@ -31,3 +32,4 @@ class Block():
         genesis.hash = Block.calculate_hash(genesis)
         return genesis
 
+GENESIS = Block.genesis_block()

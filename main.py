@@ -2,13 +2,13 @@ from flask import Flask, jsonify, request
 import logging
 import time
 import json
-# import my_block
+import my_transaction
 import my_blockchain 
 
 
 app = Flask(__name__)
 logging.basicConfig(level = logging.DEBUG)
-
+BC = my_blockchain.Blockchain()
 
 @app.route('/api/v1/mine', methods=['GET'])
 def mine():# create a new block.  1 block duoc tao thanh >> add vao chain
@@ -18,19 +18,32 @@ def mine():# create a new block.  1 block duoc tao thanh >> add vao chain
 # create a new transaction FOCUS
 @app.route('/api/v1/transactions', methods=['POST'])
 def new_transaction():
-    pass
-
+    _from = request.json.get('from')
+    _to = request.json.get('to')
+    _amount = request.json.get('amount')
+    if _from and _to and _amount:
+        BC.add_transaction(
+            _from,
+            _to,
+            _amount
+        )
+        if BC.add_block():
+            return jsonify(BC.info_current_block())
+        else:
+            return jsonify({'status': 'failed'})
+    else:
+        return jsonify({'status': 'failed'})
 
 @app.route('/api/v1/current_block', methods=['GET'])
 def get_current_block():
-    data = my_blockchain.info_current_block()
+    data = BC.info_current_block()
     return jsonify(data)
 
 
 # get all of blocks in blockchain
 @app.route('/api/v1/chain', methods=['GET'])
 def full_chain():
-    data = my_blockchain.info_all_blocks()
+    data = BC.info_all_blocks()
     return jsonify(data)
 
 
