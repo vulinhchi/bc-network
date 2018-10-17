@@ -18,25 +18,27 @@ queue_mine_transaction = Queue()
 
 
 def mine():
-    count_time = 0
     while True:
-        while len(list(queue_mine_transaction_wait.queue)) < 10 and count_time < 11: 
+        count_time = 0
+        logging.info('watching...')
+        while count_time < 11: 
+            logging.info("www")
             count_time += 1
             logging.warning(count_time)
-            if len(list(queue_mine_transaction_wait.queue)) == 0 and count_time  == 10:
-                count_time = 0
-                pass
-            elif len(list(queue_mine_transaction_wait.queue)) == 9 or count_time  == 10:
-                config.transfer_queue(queue_mine_transaction_wait, queue_mine_transaction)
-                print('do dai cua q2 = ',len(list(queue_mine_transaction.queue)))
-                BC.add_transaction(queue_mine_transaction) 
-                count_time = 0
-                
+            if count_time == 10:
+                if len(list(queue_mine_transaction_wait.queue)) == 0:
+                    count_time == 0
+                    pass
+                else:
+                    config.transfer_queue(queue_mine_transaction_wait, queue_mine_transaction)
+                    print('do dai cua q2 = ',len(list(queue_mine_transaction.queue)))
+                    BC.add_transaction(queue_mine_transaction) 
+                    count_time = 0
             time.sleep(1)
         time.sleep(1)
 
 
-# create a new transaction FOCUS
+# create a new transaction
 @app.route('/api/v1/transactions', methods=['POST'])
 def new_transaction():
     _from = request.json.get('from')
