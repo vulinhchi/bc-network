@@ -6,11 +6,13 @@ import my_transaction
 import my_blockchain 
 from threading import Thread
 from queue import Queue
+import config
 
 
 app = Flask(__name__)
 logging.basicConfig(level = logging.DEBUG)
 BC = my_blockchain.Blockchain()
+WEBHOOK_URL = 'http://0.0.0.0:5555/api/v1/transaction/check'
 queue_mine_transaction_wait = Queue()
 queue_mine_transaction = Queue()
 
@@ -18,12 +20,19 @@ queue_mine_transaction = Queue()
 def mine():
     count_time = 0
     while True:
-        count_time += 1
-        logging.info('watching... ')
-        while len(list(queue_mine_transaction_wait.queue)) < 7 and count_time == 3: 
-            logging.info("watchin mining...")
-            BC.add_transaction(queue_mine_transaction_wait)
-            time.sleep(3) # sleep 3s to calculate block
+        while len(list(queue_mine_transaction_wait.queue)) < 10 and count_time < 11: 
+            count_time += 1
+            logging.warning(count_time)
+            if len(list(queue_mine_transaction_wait.queue)) == 0 and count_time  == 10:
+                count_time = 0
+                pass
+            elif len(list(queue_mine_transaction_wait.queue)) == 9 or count_time  == 10:
+                config.transfer_queue(queue_mine_transaction_wait, queue_mine_transaction)
+                print('do dai cua q2 = ',len(list(queue_mine_transaction.queue)))
+                BC.add_transaction(queue_mine_transaction) 
+                count_time = 0
+                
+            time.sleep(1)
         time.sleep(1)
 
 

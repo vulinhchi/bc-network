@@ -28,7 +28,7 @@ class Blockchain(object):
 
     def add_transaction(self, queue_mine_transaction_wait):
         print('ahihihi')
-        
+        print("len q2 nhan dk = ", len(list(queue_mine_transaction_wait.queue)) )
         while len(list(queue_mine_transaction_wait.queue)) > 0:
             _from = queue_mine_transaction_wait.get()
             _to = queue_mine_transaction_wait.get()
@@ -36,7 +36,7 @@ class Blockchain(object):
             print("_from = ", _from)
             print("_to = ", _to)
             print("_amount = ", _amount)
-
+            print("len q2 after get....", len(list(queue_mine_transaction_wait.queue)) )
             items = str(_from)+ str(_to) + str(_amount)
             items = items.encode()
             tx = {
@@ -48,11 +48,10 @@ class Blockchain(object):
             print(tx)
             self.current_transactions.append(tx)
             print("current .. = ", self.current_transactions)
-            return self.add_block()
+        return self.add_block()
     
 
     def add_block(self):
-        print("adsdfjdfjd")
         previous_block = self.blocks[-1]
         
         current_block = Block.from_previous(previous_block,"ahihi" )
