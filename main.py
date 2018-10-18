@@ -16,6 +16,8 @@ WEBHOOK_URL = 'http://0.0.0.0:5555/api/v1/transaction/check'
 queue_mine_transaction_wait = Queue()
 queue_mine_transaction = Queue()
 
+# working on the nodes/ confict nodes..
+
 
 def mine():
     while True:
@@ -35,7 +37,7 @@ def mine():
                     BC.add_transaction(queue_mine_transaction) 
                     count_time = 0
             time.sleep(1)
-        time.sleep(1)
+        # time.sleep(1)
 
 
 # create a new transaction

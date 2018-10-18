@@ -33,17 +33,19 @@ class Blockchain(object):
             _from = queue_mine_transaction_wait.get()
             _to = queue_mine_transaction_wait.get()
             _amount = queue_mine_transaction_wait.get()
+            _time = datetime.now()
             print("_from = ", _from)
             print("_to = ", _to)
             print("_amount = ", _amount)
             print("len q2 after get....", len(list(queue_mine_transaction_wait.queue)) )
-            items = str(_from)+ str(_to) + str(_amount)
+            items = str(_from)+ str(_to) + str(_amount) + str(_time)
             items = items.encode()
             tx = {
                 'sender': _from,
                 'recipient': _to,
                 'amount': _amount,
-                'transaction_hash': hashlib.sha256(items).hexdigest()
+                'transaction_hash': hashlib.sha256(items).hexdigest(),
+                'time': _time
             }
             print(tx)
             self.current_transactions.append(tx)
