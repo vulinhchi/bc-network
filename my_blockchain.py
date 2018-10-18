@@ -5,6 +5,7 @@ import json
 import my_block, my_transaction
 from urllib.parse import urlparse
 from queue import Queue
+import requests
 
 Block = my_block.Block
 
@@ -85,6 +86,27 @@ class Blockchain(object):
             return True
         else:
             return False # invalid URL
+
+
+    def resolve_conflicts(self):
+        nodes = self.nodes
+        new_chain = None
+        max_length = len(self.blocks) # count number of block, not include transaction in block
+
+        for node in nodes:
+            response = requests.get(f'http://{node}/chain')
+
+            if response.status_code == 200:
+                length = response.json()['length']
+                chain = response.json()['chain']
+
+                if length > max_length:
+                    max_length= length
+                    new_chain = chain
+        if new_chain:
+            self.chain = new_chain
+            return True
+        return False
 
 
     def info_current_block(self):

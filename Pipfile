@@ -6,6 +6,10 @@ name = "pypi"
 [packages]
 flask = "*"
 requests = "*"
+pycrypto = "*"
+"web3" = "*"
+attributedict = "*"
+eth-account = "*"
 
 [dev-packages]
 pylint = "*"

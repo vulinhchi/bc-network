@@ -4,6 +4,7 @@ import time
 import json
 import my_transaction
 import my_blockchain 
+import my_account
 from threading import Thread
 from queue import Queue
 import config
@@ -87,7 +88,8 @@ def register_nodes():
             if BC.register_node(node):
                 count_number_added_node += 1
         if count_number_added_node == count_number_node:
-            result = {'status': 'New nodes have been added'}
+            result = {'status': 'New nodes have been added',
+                        'total_nodes': list(BC.nodes)}
         else:
             result = {'status': 'Fail to add all of new nodes'}
     else: 
@@ -97,7 +99,8 @@ def register_nodes():
     
 
     # save all info in a node
-    # list info of a new node
+    #have to create and run a another server as a node, and check
+    # can use with docker?
 
 @app.route('/api/v1/nodes', methods=['GET'])
 def list_nodes():
@@ -108,7 +111,18 @@ def list_nodes():
     return jsonify({'nodes': json_node})
 
 
-# the api to resolve conflict
+@app.route('/api/v1/accounts/<int:user_id>', methods=['POST'])
+def create_account(user_id):
+    addr, priv = my_account.create_wallet_account(user_id)
+    return jsonify({
+        'user_id': user_id,
+        'address': addr, 
+        'private_key': priv
+        
+    })
+
+
+# the api to resolve conflict >> later
 @app.route('/api/v1/nodes/resolve', methods=['GET'])
 def consensus():
     pass
