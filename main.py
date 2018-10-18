@@ -79,24 +79,33 @@ def full_chain():
 def register_nodes():
     url_node = request.get_json()
     nodes = url_node.get('nodes')
-    if nodes is None:
+    if nodes :
+        count_number_node = 0   
+        count_number_added_node = 0
+        for node in nodes:
+            count_number_node += 1
+            if BC.register_node(node):
+                count_number_added_node += 1
+        if count_number_added_node == count_number_node:
+            result = {'status': 'New nodes have been added'}
+        else:
+            result = {'status': 'Fail to add all of new nodes'}
+    else: 
         result = {'status':'Invalid json'}
-    count_number_node = 0   
-    count_number_added_node = 0
-    for node in nodes:
-        count_number_node += 1
-        if BC.register_node(node):
-            count_number_added_node += 1
-    if count_number_added_node == count_number_node:
-        result = {'status': 'New nodes have been added'}
-    else:
-        result = {'status': 'Fail to add all of new nodes'}
     
     return jsonify(result)
     
 
     # save all info in a node
     # list info of a new node
+
+@app.route('/api/v1/nodes', methods=['GET'])
+def list_nodes():
+    nodes = list(BC.nodes)
+    json_node = []
+    for i in nodes:
+        json_node.append(i)
+    return jsonify({'nodes': json_node})
 
 
 # the api to resolve conflict

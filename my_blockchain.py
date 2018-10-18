@@ -77,11 +77,11 @@ class Blockchain(object):
 
     def register_node(self, url_node):
         parsed_url = urlparse(url_node)
-        if parsed_url.netloc:
+        if parsed_url.netloc and parsed_url.scheme:
             self.nodes.add(parsed_url.netloc) # like: http://0.0.0.0:3333
             return True
         elif parsed_url.path:
-            self.nodes.add(parsed_url.path) # like: /api/v1/....
+            self.nodes.add(parsed_url.path) # like: /api/v1/.... or facebook.com
             return True
         else:
             return False # invalid URL
