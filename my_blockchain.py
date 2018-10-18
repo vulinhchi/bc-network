@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 import json
 import my_block, my_transaction
+from urllib.parse import urlparse
 from queue import Queue
 
 Block = my_block.Block
@@ -73,7 +74,18 @@ class Blockchain(object):
             return True
         else:
             return False
-        
+
+    def register_node(self, url_node):
+        parsed_url = urlparse(url_node)
+        if parsed_url.netloc:
+            self.nodes.add(parsed_url.netloc) # like: http://0.0.0.0:3333
+            return True
+        elif parsed_url.path:
+            self.nodes.add(parsed_url.path) # like: /api/v1/....
+            return True
+        else:
+            return False # invalid URL
+
 
     def info_current_block(self):
         _info_block =[]
