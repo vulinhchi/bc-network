@@ -2,12 +2,9 @@ from flask import Flask, jsonify, request
 import logging
 import time
 import json
-import my_transaction
-import my_blockchain 
-import my_account
+from bc_network import (my_blockchain, my_account, my_block, my_transaction, config)
 from threading import Thread
 from queue import Queue
-import config
 
 
 app = Flask(__name__)
@@ -20,8 +17,8 @@ queue_mine_transaction = Queue()
 # working on the nodes/ confict nodes..
 # 1 node is accepted >> annouce for the others,
 # How to save data in the new node, and how to connect to the new node?
-# work with sign transaction ( wallet account)
-# allow store signed "contract", signature, userid...
+# work with sign transaction ( wallet account) DOING NOW
+# allow store signed "contract", signature, userid... 
 
 def mine():
     while True:
@@ -32,8 +29,9 @@ def mine():
             count_time += 1
             logging.warning(count_time)
             if count_time == 10:
+                logging.info("10 seconds was over!")
                 if len(list(queue_mine_transaction_wait.queue)) == 0:
-                    count_time == 0
+                    count_time = 0
                     pass
                 else:
                     config.transfer_queue(queue_mine_transaction_wait, queue_mine_transaction)
@@ -41,20 +39,19 @@ def mine():
                     BC.add_transaction(queue_mine_transaction) 
                     count_time = 0
             time.sleep(1)
-        # time.sleep(1)
-
+        
 
 # create a new transaction
 @app.route('/api/v1/transactions', methods=['POST'])
 def new_transaction():
     _from = request.json.get('from')
     _to = request.json.get('to')
-    _amount = request.json.get('amount')
-    if _from and _to and _amount:
+    _data = request.json.get('data')
+    if _from and _to and _data:
         print(" co nhan duoc du lieu dau vao !")
         queue_mine_transaction_wait.put(_from)
         queue_mine_transaction_wait.put(_to)
-        queue_mine_transaction_wait.put(_amount)
+        queue_mine_transaction_wait.put(_data)
         if len(list(queue_mine_transaction_wait.queue)) == 0:
             return jsonify(BC.info_current_block())
         else:

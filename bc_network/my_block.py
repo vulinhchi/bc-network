@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 import hashlib
-import my_blockchain
+from bc_network import my_blockchain
 
 class Block():
     def __init__(self, index, previous_hash, timestamp, data, nonce,transactions=[], hashvalue=''):

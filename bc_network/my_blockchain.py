@@ -2,7 +2,7 @@ import hashlib
 import time
 from datetime import datetime
 import json
-import my_block, my_transaction
+from bc_network import my_block, my_transaction
 from urllib.parse import urlparse
 from queue import Queue
 import requests
@@ -28,24 +28,20 @@ class Blockchain(object):
         return block.hash 
 
 
-    def add_transaction(self, queue_mine_transaction_wait):
-        print('ahihihi')
-        print("len q2 nhan dk = ", len(list(queue_mine_transaction_wait.queue)) )
-        while len(list(queue_mine_transaction_wait.queue)) > 0:
-            _from = queue_mine_transaction_wait.get()
-            _to = queue_mine_transaction_wait.get()
-            _amount = queue_mine_transaction_wait.get()
+    def add_transaction(self, queue_mine_transaction):
+        print("len q2 nhan dk = ", len(list(queue_mine_transaction.queue)) )
+        while len(list(queue_mine_transaction.queue)) > 0:
+            _from = queue_mine_transaction.get()
+            _to = queue_mine_transaction.get()
             _time = datetime.now()
-            print("_from = ", _from)
-            print("_to = ", _to)
-            print("_amount = ", _amount)
-            print("len q2 after get....", len(list(queue_mine_transaction_wait.queue)) )
-            items = str(_from)+ str(_to) + str(_amount) + str(_time)
+            _data = queue_mine_transaction.get()
+            
+            items = str(_from)+ str(_to) + str(_data) + str(_time)
             items = items.encode()
             tx = {
-                'sender': _from,
-                'recipient': _to,
-                'amount': _amount,
+                'from': _from,
+                'to': _to,
+                'data': _data,
                 'transaction_hash': hashlib.sha256(items).hexdigest(),
                 'time': _time
             }
