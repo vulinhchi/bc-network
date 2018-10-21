@@ -13,7 +13,7 @@ class Blockchain(object):
     
     def __init__(self):
         self.current_transactions = [] # list transactions of current block (before add in 'chain')
-        self.blocks = [my_block.GENESIS] # list all of block in bc
+        self.blocks = [my_block.GENESIS] # list all of block in bc (chain)
         self.nodes = set()# list of all nodes in bc
     
 
@@ -25,7 +25,7 @@ class Blockchain(object):
             block.nonce += 1
             block.hash = Block.calculate_hash(block)
         
-        return block.hash 
+        return block.hash  
 
 
     def add_transaction(self, queue_mine_transaction):
@@ -88,21 +88,31 @@ class Blockchain(object):
         nodes = self.nodes
         new_chain = None
         max_length = len(self.blocks) # count number of block, not include transaction in block
-
-        for node in nodes:
-            response = requests.get(f'http://{node}/chain')
-
-            if response.status_code == 200:
-                length = response.json()['length']
-                chain = response.json()['chain']
-
-                if length > max_length:
-                    max_length= length
-                    new_chain = chain
-        if new_chain:
-            self.chain = new_chain
+        print(nodes)
+        print("max length = ", max_length )
+        if not nodes: # set() is empty
             return True
-        return False
+        else:
+            for node in nodes:
+                print("node = ", node)
+                response = requests.get(f'http://{node}/api/v1/chain')
+
+                if response.status_code == 200:
+                    chain = response.json()
+                    print('do dai trong node ',node , " la ",len(chain))
+                    if len(chain) > max_length:
+                        max_length= len(chain)
+                        new_chain = chain
+                        
+            if new_chain:
+                print("new chain = ", new_chain)
+                for i in new_chain:
+                    block_item = Block(i['index'],i['previous_hash'],i['timestamp'], i['proof-of-work'], i['transactions'], i['hash'])
+                    self.blocks.append(block_item)
+                
+                print("self.blocks = ", self.blocks)
+                return True
+            return False
 
 
     def info_current_block(self):
@@ -112,7 +122,6 @@ class Blockchain(object):
             'index': current_block.index,
             'previous_hash': current_block.previous_hash,
             'timestamp': current_block.timestamp,
-            'data': current_block.data,
             'transactions': current_block.transactions,
             'proof-of-work': current_block.nonce,
             'hash': current_block.hash
@@ -123,13 +132,16 @@ class Blockchain(object):
 
     def info_all_blocks(self):
         print("Number of block in BC: ", len(self.blocks))
+        print('type after set : ', type(self.blocks))
+        print('dlgfkgjfjgkfgjkfff', self.blocks)
         all_block = []
         for block_item in self.blocks:
+            print('type of block_item : ', type(block_item))
+            print('get info in each block : ',block_item)
             info_block = {
                 'index': block_item.index,
                 'previous_hash': block_item.previous_hash,
                 'timestamp': block_item.timestamp,
-                'data': block_item.data,
                 'transactions': block_item.transactions,
                 'proof-of-work': block_item.nonce,
                 'hash': block_item.hash

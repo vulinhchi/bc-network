@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 import logging
 import time
 import json
+import os
 from bc_network import (my_blockchain, my_account, my_block, my_transaction, config)
 from threading import Thread
 from queue import Queue
@@ -69,6 +70,7 @@ def get_current_block():
 @app.route('/api/v1/chain', methods=['GET'])
 def full_chain():
     data = BC.info_all_blocks()
+    print("full block chain = ", data)
     return jsonify(data)
 
 
@@ -93,11 +95,7 @@ def register_nodes():
         result = {'status':'Invalid json'}
     
     return jsonify(result)
-    
 
-    # save all info in a node
-    #have to create and run a another server as a node, and check
-    # can use with docker?
 
 @app.route('/api/v1/nodes', methods=['GET'])
 def list_nodes():
@@ -122,12 +120,25 @@ def create_account(user_id):
 # the api to resolve conflict >> later
 @app.route('/api/v1/nodes/resolve', methods=['GET'])
 def consensus():
-    pass
-
+    replaced = BC.resolve_conflicts()
+    print(' new block: ', BC.info_all_blocks())
+    if replaced:
+        print(' new block: ', BC.info_all_blocks())
+        response = {
+            'message': 'Our chain was replaced',
+            'new_chain': BC.info_all_blocks()
+        }
+    else:
+        response = {
+            'message':'Our chain is authoritative',
+            'chain': BC.info_all_blocks()
+        }
+    return jsonify(response)
     
 
 if __name__ == "__main__":
     app.debug = True
     watch_miner = Thread(target=mine)
     watch_miner.start()
-    app.run(host='0.0.0.0', port=4444)
+    port = int(os.environ.get("PORT", 4444))
+    app.run(host='0.0.0.0', port=port)
