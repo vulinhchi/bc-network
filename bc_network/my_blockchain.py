@@ -2,10 +2,14 @@ import hashlib
 import time
 from datetime import datetime
 import json
-from bc_network import my_block, my_transaction
+import socket
+import logging
+from threading import Thread
+from bc_network import my_block, my_transaction, my_account, config
 from urllib.parse import urlparse
 from queue import Queue
 import requests
+from flask import Flask, jsonify, request
 
 Block = my_block.Block
 
@@ -15,8 +19,28 @@ class Blockchain(object):
         self.current_transactions = [] # list transactions of current block (before add in 'chain')
         self.blocks = [my_block.GENESIS] # list all of block in bc (chain)
         self.nodes = set()# list of all nodes in bc
-    
 
+        self.udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        
+        self.http = Flask(__name__)
+        self.http.config.from_object(self)
+        self.http.route('/', methods=['GET'])(self.a)
+        self.http.route('/blocks', methods=['GET'])(self.list_blocks)
+        self.http.route('/nodes', methods=['GET'])(self.list_nodes)
+        self.http.route('/transactions', methods=['POST'])(self.new_transaction)
+        self.http.route('/current_block', methods=['GET'])(self.get_current_block)
+        self.http.route('/account/<int:user_id>', methods=['POST'])(self.create_account)
+        self.http.route('/node/resolve', methods=['GET'])(self.consensus)
+        
+        self.queue_mine_transaction_wait = Queue()
+        self.queue_mine_transaction = Queue()
+
+    
+    def a(self):
+        return jsonify({'a':'fdjfdjfdj'})
+
+        
     def proof_of_work(self, block):
         block.nonce = 0
         block.hash = Block.calculate_hash(block)
@@ -57,7 +81,7 @@ class Blockchain(object):
         current_block = Block.from_previous(previous_block,"ahihi" )
         current_block.hash = self.proof_of_work(current_block)
 
-        # add transactions(s)
+        # add transaction(s)
         print(" ham addblock , self.current_transactions = ",  self.current_transactions)
         current_block.transactions = self.current_transactions
         print("current_block.transactions  = ", current_block.transactions )
@@ -75,10 +99,10 @@ class Blockchain(object):
     def register_node(self, url_node):
         parsed_url = urlparse(url_node)
         if parsed_url.netloc and parsed_url.scheme:
-            self.nodes.add(parsed_url.netloc) # like: http://0.0.0.0:3333
+            self.nodes.add(parsed_url.netloc) 
             return True
         elif parsed_url.path:
-            self.nodes.add(parsed_url.path) # like: /api/v1/.... or facebook.com
+            self.nodes.add(parsed_url.path)
             return True
         else:
             return False # invalid URL
@@ -149,3 +173,124 @@ class Blockchain(object):
             all_block.append(info_block)
         return all_block
 
+
+    def udp_broadcast(self):
+        while True:
+            # logging.warning('send broadcast ')
+            self.udp.sendto(b'hello', ("255.255.255.255", 5555))
+            time.sleep(1)
+
+
+    def udp_listen(self):
+        while True:
+            # logging.warning('nhan thong tin tu broadcast')
+            message, remote = self.udp.recvfrom(10)
+            # logging.info('message = ')
+            # logging.info(message)
+            # logging.info(remote)
+            address , _ = remote
+            if message == b'hello' and address not in self.nodes:
+                self.nodes.add(address)
+                logging.warning('Peer discover: %s', remote)
+
+
+    def mine(self):
+        while True:
+            # peer discoverd:
+            count_time = 0
+            logging.info('watching...')
+            while count_time < 11: 
+                count_time += 1
+                # logging.warning(count_time)
+                if count_time == 10:
+                    logging.info("10 seconds was over!")
+                    if len(list(self.queue_mine_transaction_wait.queue)) == 0:
+                        count_time = 0
+                        pass
+                    else:
+                        config.transfer_queue(self.queue_mine_transaction_wait, self.queue_mine_transaction)
+                        print('do dai cua q2 = ',len(list(self.queue_mine_transaction.queue)))
+                        self.add_transaction(self.queue_mine_transaction) 
+                        count_time = 0
+                time.sleep(1)
+   
+   
+    # API
+    def list_blocks(self):
+        data = self.info_all_blocks()
+        print("full block chain = ", data)
+        return jsonify(data)
+
+    
+    def list_nodes(self):
+        nodes = list(self.nodes)
+        json_node = []
+        for i in nodes:
+            json_node.append(i)
+        return jsonify({'nodes': json_node})
+
+    
+    def new_transaction(self):
+        _from = request.json.get('from')
+        _to = request.json.get('to')
+        _data = request.json.get('data')
+        if _from and _to and _data:
+            print(" co nhan duoc du lieu dau vao !")
+            self.queue_mine_transaction_wait.put(_from)
+            self.queue_mine_transaction_wait.put(_to)
+            self.queue_mine_transaction_wait.put(_data)
+            if len(list(self.queue_mine_transaction_wait.queue)) == 0:
+                return jsonify(self.info_current_block())
+            else:
+                return jsonify({'status': 'in process'})
+        else:
+            return jsonify({'status': 'failed'})
+
+
+    def get_current_block(self):
+        data = self.info_current_block()
+        return jsonify(data)
+
+    
+
+    def create_account(self, user_id):
+        addr, priv = my_account.create_wallet_account(user_id)
+        return jsonify({
+            'user_id': user_id,
+            'address': addr, 
+            'private_key': priv
+            
+        })
+
+    
+    def consensus(self):
+        replaced = self.resolve_conflicts()
+        print(' new block: ', self.info_all_blocks())
+        if replaced:
+            print(' new block: ', self.info_all_blocks())
+            response = {
+                'message': 'Our chain was replaced',
+                'new_chain': self.info_all_blocks()
+            }
+        else:
+            response = {
+                'message':'Our chain is authoritative',
+                'chain': self.info_all_blocks()
+            }
+        return jsonify(response)
+
+
+    def run(self, host='0.0.0.0'):
+        logging.info('Starting...')
+        self.udp.bind((host, 5555))
+        # watch_miner = Thread(target=self.mine)
+        # watch_miner.start()
+        
+        udp_listen = Thread(target=self.udp_listen)
+        udp_broadcast = Thread(target=self.udp_broadcast)
+
+        udp_broadcast.start()
+        udp_listen.start()
+        self.http.run(host=host, port = 4444)
+        udp_broadcast.join()
+        udp_listen.join()
