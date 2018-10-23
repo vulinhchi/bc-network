@@ -7,7 +7,7 @@ services:
     networks:
       default: {}
     ports:
-      - 2200-2300:2345
+      - 2200-2202:4444
 
 networks:
   default:

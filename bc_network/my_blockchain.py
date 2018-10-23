@@ -31,7 +31,7 @@ class Blockchain(object):
         self.http.route('/transactions', methods=['POST'])(self.new_transaction)
         self.http.route('/current_block', methods=['GET'])(self.get_current_block)
         self.http.route('/account/<int:user_id>', methods=['POST'])(self.create_account)
-        self.http.route('/node/resolve', methods=['GET'])(self.consensus)
+        self.http.route('/nodes/resolve', methods=['GET'])(self.consensus)
         
         self.queue_mine_transaction_wait = Queue()
         self.queue_mine_transaction = Queue()
@@ -117,13 +117,13 @@ class Blockchain(object):
         if not nodes: # set() is empty
             return True
         else:
-            for node in nodes:
-                print("node = ", node)
-                response = requests.get(f'http://{node}/api/v1/chain')
+            for i  in range(2200,2203):
+                # print("node = ", node)
+                response = requests.get(f'http://172.30.0.1:{i}/blocks')
 
                 if response.status_code == 200:
                     chain = response.json()
-                    print('do dai trong node ',node , " la ",len(chain))
+                    print('DO DAI TRONG NODE ',i , " la ",len(chain))
                     if len(chain) > max_length:
                         max_length= len(chain)
                         new_chain = chain
@@ -157,7 +157,6 @@ class Blockchain(object):
     def info_all_blocks(self):
         print("Number of block in BC: ", len(self.blocks))
         print('type after set : ', type(self.blocks))
-        print('dlgfkgjfjgkfgjkfff', self.blocks)
         all_block = []
         for block_item in self.blocks:
             print('type of block_item : ', type(block_item))
@@ -176,14 +175,12 @@ class Blockchain(object):
 
     def udp_broadcast(self):
         while True:
-            # logging.warning('send broadcast ')
             self.udp.sendto(b'hello', ("255.255.255.255", 5555))
             time.sleep(1)
 
 
     def udp_listen(self):
         while True:
-            # logging.warning('nhan thong tin tu broadcast')
             message, remote = self.udp.recvfrom(10)
             # logging.info('message = ')
             # logging.info(message)
@@ -203,7 +200,7 @@ class Blockchain(object):
                 count_time += 1
                 # logging.warning(count_time)
                 if count_time == 10:
-                    logging.info("10 seconds was over!")
+                    # logging.info("10 seconds was over!")
                     if len(list(self.queue_mine_transaction_wait.queue)) == 0:
                         count_time = 0
                         pass
@@ -283,8 +280,8 @@ class Blockchain(object):
     def run(self, host='0.0.0.0'):
         logging.info('Starting...')
         self.udp.bind((host, 5555))
-        # watch_miner = Thread(target=self.mine)
-        # watch_miner.start()
+        watch_miner = Thread(target=self.mine)
+        watch_miner.start()
         
         udp_listen = Thread(target=self.udp_listen)
         udp_broadcast = Thread(target=self.udp_broadcast)
@@ -292,5 +289,5 @@ class Blockchain(object):
         udp_broadcast.start()
         udp_listen.start()
         self.http.run(host=host, port = 4444)
-        udp_broadcast.join()
-        udp_listen.join()
+        # udp_broadcast.join()
+        # udp_listen.join()
