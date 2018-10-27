@@ -182,26 +182,11 @@ class Blockchain(object):
     def udp_listen(self):
         while True:
             message, remote = self.udp.recvfrom(10)
-            # logging.info('message = ')
-            # logging.info(message)
-            # logging.info(remote)
             address , _ = remote
             if message == b'hello' and address not in self.nodes:
                 self.nodes.add(address)
                 logging.warning('Peer discover: %s', remote)
-            # elif json.loads(message.decode())['index']:
-            #     logging.warning(" added block at %s", remote)
-            # elif message != b'hello' and message !='':
-            # else:
-            #     logging.warning(message)
-            #     # message_decode = message.decode()
-            #     message_json = json.loads(message) # block_json
-            #     print("nhan block: ")
-            #     print(message_json)
-            #     # for i in range(2200,2203):
-            #     r = requests.post('http://172.30.0.1:2201/nodes/update', data=json.dumps(message_json), headers=config.headers)
-            #     logging.warning('ket qua sau khi update')xfx
-            #     logging.warning(r.text)
+            
                 
 
 
@@ -211,14 +196,11 @@ class Blockchain(object):
 
     def mine(self):
         while True:
-            # peer discoverd:
             count_time = 0
             logging.info('watching...')
             while count_time < 11: 
                 count_time += 1
-                # logging.warning(count_time)
                 if count_time == 10:
-                    # logging.info("10 seconds was over!")
                     if len(list(self.queue_mine_transaction_wait.queue)) == 0:
                         count_time = 0
                         pass
@@ -228,10 +210,8 @@ class Blockchain(object):
                         self.add_transaction(self.queue_mine_transaction) 
                         
                         current_block = self.blocks[-1]
-                        print("newest block: ", current_block.index)
-                        print(current_block.timestamp)
-                        print(type(current_block.timestamp))
-                        # notify to nodes
+                        
+            # auto update new mined block to other nodes
                         block_json = {
                             'index' : current_block.index,
                             'previous_hash' : current_block.previous_hash,
@@ -241,15 +221,12 @@ class Blockchain(object):
                             'hash' : current_block.hash
                         
                         }
-                        
-                        # block_string = json.dumps(block_json)
                         print("before send new block to broadcast: ")
                         # self.udp.sendto(block_string.encode(), ("255.255.255.255", 5555))
                         for i in range(2200, 2203):
                             r = requests.post(f'http://172.30.0.1:{i}/nodes/update', data=json.dumps(block_json), headers=config.headers)
                             logging.warning('ket qua sau khi update')
                             logging.warning(r.text)
-                        # self.udp.sendto(json.dumps(block_json).encode(), ("255.255.255.255", 5555))
                         count_time = 0
                 time.sleep(1)
    
@@ -262,9 +239,6 @@ class Blockchain(object):
     
     def list_nodes(self):
         nodes = list(self.nodes)
-        # json_node = []
-        # for i in nodes:
-        #     json_node.append(i)
         return jsonify({'nodes': nodes})
 
     
@@ -290,7 +264,6 @@ class Blockchain(object):
         return jsonify(data)
 
     
-
     def create_account(self, user_id):
         addr, priv = my_account.create_wallet_account(user_id)
         return jsonify({
