@@ -7,7 +7,7 @@ class Block():
     def __init__(self, index, previous_hash, timestamp, nonce,transactions=[], hashvalue=''):
         self.index = index
         self.previous_hash = previous_hash
-        self.timestamp = timestamp
+        self.timestamp = str(timestamp)
         self.nonce = nonce
         self.transactions = transactions
         self.hash = hashvalue
@@ -22,12 +22,12 @@ class Block():
     
     @staticmethod
     def from_previous(block, data):
-        return Block(block.index + 1, block.hash, datetime.now(),0)
+        return Block(block.index + 1, block.hash, str(datetime.now()),0)
 
 
     @staticmethod
     def genesis_block():
-        genesis =  Block(0,'',datetime.now(), 0)
+        genesis =  Block(0,'','Tue, 23 Oct 2018 14:19:06 GMT', 0)
         genesis.hash = Block.calculate_hash(genesis)
         return genesis
 

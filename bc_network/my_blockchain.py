@@ -24,22 +24,19 @@ class Blockchain(object):
         self.udp.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         
         self.http = Flask(__name__)
-        self.http.config.from_object(self)
-        self.http.route('/', methods=['GET'])(self.a)
+        # self.http.config.from_object(self)
         self.http.route('/blocks', methods=['GET'])(self.list_blocks)
         self.http.route('/nodes', methods=['GET'])(self.list_nodes)
         self.http.route('/transactions', methods=['POST'])(self.new_transaction)
         self.http.route('/current_block', methods=['GET'])(self.get_current_block)
         self.http.route('/account/<int:user_id>', methods=['POST'])(self.create_account)
         self.http.route('/nodes/resolve', methods=['GET'])(self.consensus)
+        self.http.route('/nodes/update', methods=['POST'])(self.update_block)
+        self.http.route('/nodes/update1', methods=['POST'])(self.test_update)
         
         self.queue_mine_transaction_wait = Queue()
         self.queue_mine_transaction = Queue()
-
     
-    def a(self):
-        return jsonify({'a':'fdjfdjfdj'})
-
         
     def proof_of_work(self, block):
         block.nonce = 0
@@ -57,10 +54,10 @@ class Blockchain(object):
         while len(list(queue_mine_transaction.queue)) > 0:
             _from = queue_mine_transaction.get()
             _to = queue_mine_transaction.get()
-            _time = datetime.now()
+            _time = str(datetime.now())
             _data = queue_mine_transaction.get()
             
-            items = str(_from)+ str(_to) + str(_data) + str(_time)
+            items = str(_from)+ str(_to) + str(_data) + _time
             items = items.encode()
             tx = {
                 'from': _from,
@@ -131,10 +128,17 @@ class Blockchain(object):
             if new_chain:
                 print("new chain = ", new_chain)
                 for i in new_chain:
-                    block_item = Block(i['index'],i['previous_hash'],i['timestamp'], i['proof-of-work'], i['transactions'], i['hash'])
-                    self.blocks.append(block_item)
+                    for old in self.blocks:
+                        if i['index'] != old.index:
+                            block_item = Block(
+                                i['index'],
+                                i['previous_hash'],
+                                i['timestamp'], 
+                                i['proof-of-work'], 
+                                i['transactions'], 
+                                i['hash'])
+                            self.blocks.append(block_item)
                 
-                print("self.blocks = ", self.blocks)
                 return True
             return False
 
@@ -155,12 +159,8 @@ class Blockchain(object):
 
 
     def info_all_blocks(self):
-        print("Number of block in BC: ", len(self.blocks))
-        print('type after set : ', type(self.blocks))
         all_block = []
         for block_item in self.blocks:
-            print('type of block_item : ', type(block_item))
-            print('get info in each block : ',block_item)
             info_block = {
                 'index': block_item.index,
                 'previous_hash': block_item.previous_hash,
@@ -177,7 +177,7 @@ class Blockchain(object):
         while True:
             self.udp.sendto(b'hello', ("255.255.255.255", 5555))
             time.sleep(1)
-
+           
 
     def udp_listen(self):
         while True:
@@ -189,7 +189,25 @@ class Blockchain(object):
             if message == b'hello' and address not in self.nodes:
                 self.nodes.add(address)
                 logging.warning('Peer discover: %s', remote)
+            # elif json.loads(message.decode())['index']:
+            #     logging.warning(" added block at %s", remote)
+            # elif message != b'hello' and message !='':
+            # else:
+            #     logging.warning(message)
+            #     # message_decode = message.decode()
+            #     message_json = json.loads(message) # block_json
+            #     print("nhan block: ")
+            #     print(message_json)
+            #     # for i in range(2200,2203):
+            #     r = requests.post('http://172.30.0.1:2201/nodes/update', data=json.dumps(message_json), headers=config.headers)
+            #     logging.warning('ket qua sau khi update')xfx
+            #     logging.warning(r.text)
+                
 
+
+    def test_update(self):
+        return jsonify({'status': 'ok roi do'})
+    
 
     def mine(self):
         while True:
@@ -208,6 +226,30 @@ class Blockchain(object):
                         config.transfer_queue(self.queue_mine_transaction_wait, self.queue_mine_transaction)
                         print('do dai cua q2 = ',len(list(self.queue_mine_transaction.queue)))
                         self.add_transaction(self.queue_mine_transaction) 
+                        
+                        current_block = self.blocks[-1]
+                        print("newest block: ", current_block.index)
+                        print(current_block.timestamp)
+                        print(type(current_block.timestamp))
+                        # notify to nodes
+                        block_json = {
+                            'index' : current_block.index,
+                            'previous_hash' : current_block.previous_hash,
+                            'timestamp' : current_block.timestamp,
+                            'proof-of-work' : current_block.nonce,
+                            'transactions' : current_block.transactions,
+                            'hash' : current_block.hash
+                        
+                        }
+                        
+                        # block_string = json.dumps(block_json)
+                        print("before send new block to broadcast: ")
+                        # self.udp.sendto(block_string.encode(), ("255.255.255.255", 5555))
+                        for i in range(2200, 2203):
+                            r = requests.post(f'http://172.30.0.1:{i}/nodes/update', data=json.dumps(block_json), headers=config.headers)
+                            logging.warning('ket qua sau khi update')
+                            logging.warning(r.text)
+                        # self.udp.sendto(json.dumps(block_json).encode(), ("255.255.255.255", 5555))
                         count_time = 0
                 time.sleep(1)
    
@@ -215,16 +257,15 @@ class Blockchain(object):
     # API
     def list_blocks(self):
         data = self.info_all_blocks()
-        print("full block chain = ", data)
         return jsonify(data)
 
     
     def list_nodes(self):
         nodes = list(self.nodes)
-        json_node = []
-        for i in nodes:
-            json_node.append(i)
-        return jsonify({'nodes': json_node})
+        # json_node = []
+        # for i in nodes:
+        #     json_node.append(i)
+        return jsonify({'nodes': nodes})
 
     
     def new_transaction(self):
@@ -275,6 +316,36 @@ class Blockchain(object):
                 'chain': self.info_all_blocks()
             }
         return jsonify(response)
+
+
+    def update_block(self):
+        new_block = Block(
+            request.json.get('index'),
+            request.json.get('previous_hash'),
+            request.json.get('timestamp'), 
+            request.json.get('proof-of-work'), 
+            request.json.get('transactions'), 
+            request.json.get('hash'))
+        print("index of new block")
+        print(new_block.index)
+        current_block  = self.blocks[-1]
+        logging.info("new_block.hash = ")
+        logging.info(new_block.previous_hash)
+        logging.info("current_block.hash")
+        logging.info(current_block.hash)
+        if new_block.previous_hash == current_block.hash and current_block.index == new_block.index - 1: 
+            self.blocks.append(new_block)
+            result = {
+                'status': ' successful update chain',
+                # 'new_block': request.get_json()
+
+            }
+        else:
+            result = {
+                'status': 'failed to update chain',
+                # 'new_block': request.get_json()
+            }
+        return jsonify(result)           
 
 
     def run(self, host='0.0.0.0'):
