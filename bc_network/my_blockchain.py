@@ -10,6 +10,10 @@ from urllib.parse import urlparse
 from queue import Queue
 import requests
 from flask import Flask, jsonify, request
+from Crypto.PublicKey import RSA
+from Crypto.Signature import PKCS1_v1_5
+from Crypto.Hash import SHA
+import base64
 
 Block = my_block.Block
 
@@ -32,8 +36,9 @@ class Blockchain(object):
         self.http.route('/account/<int:user_id>', methods=['POST'])(self.create_account)
         self.http.route('/nodes/resolve', methods=['GET'])(self.consensus)
         self.http.route('/nodes/update', methods=['POST'])(self.update_block)
-        self.http.route('/nodes/update1', methods=['POST'])(self.test_update)
-        
+        self.http.route('/transactions/<string:account>', methods=['GET'])(self.get_transaction_by_account)
+        self.http.route('/transaction/<string:transaction_hash>', methods=['GET'])(self.get_transaction)
+
         self.queue_mine_transaction_wait = Queue()
         self.queue_mine_transaction = Queue()
     
@@ -51,26 +56,51 @@ class Blockchain(object):
 
     def add_transaction(self, queue_mine_transaction):
         print("len q2 nhan dk = ", len(list(queue_mine_transaction.queue)) )
+        number_of_transaction = 0
+        number_of_transaction_success = 0
         while len(list(queue_mine_transaction.queue)) > 0:
             _from = queue_mine_transaction.get()
             _to = queue_mine_transaction.get()
             _time = str(datetime.now())
             _data = queue_mine_transaction.get()
+            number_of_transaction += 1
+            print("new len  = ", len(list(queue_mine_transaction.queue)))
             
-            items = str(_from)+ str(_to) + str(_data) + _time
-            items = items.encode()
-            tx = {
-                'from': _from,
-                'to': _to,
-                'data': _data,
-                'transaction_hash': hashlib.sha256(items).hexdigest(),
-                'time': _time
-            }
-            print(tx)
-            self.current_transactions.append(tx)
-            print("current .. = ", self.current_transactions)
-        return self.add_block()
-    
+            # verify transaction: check signature, mess, publickey
+            pub = _data['public_key']
+            signature = _data['signature']
+            content = _data['text']
+            print(" dât = ", _data)
+            pub_import = RSA.importKey(pub.encode())
+            h = SHA.new(content.encode())
+            
+            # chuyen signature tu bytes >> string
+            
+            sign1 = signature.encode() # bytes
+            signatue_ = base64.b64decode(sign1)
+            
+            verifier = PKCS1_v1_5.new(pub_import)
+            result = verifier.verify(h, signatue_)
+            print("ket qua: ", result)
+            if result == True:
+                number_of_transaction_success += 1
+                items = str(_from)+ str(_to) + str(_data) + _time
+                items = items.encode()
+                tx = {
+                    'from': _from,
+                    'to': _to,
+                    'data': _data,
+                    'transaction_hash': hashlib.sha256(items).hexdigest(),
+                    'time': _time
+                }
+                print(tx)
+                self.current_transactions.append(tx)
+                print("current .. = ", self.current_transactions)
+        if number_of_transaction_success != 0:
+            return self.add_block()
+        else:
+            print("K co transaction hop le!")
+            
 
     def add_block(self):
         previous_block = self.blocks[-1]
@@ -78,8 +108,6 @@ class Blockchain(object):
         current_block = Block.from_previous(previous_block,"ahihi" )
         current_block.hash = self.proof_of_work(current_block)
 
-        # add transaction(s)
-        print(" ham addblock , self.current_transactions = ",  self.current_transactions)
         current_block.transactions = self.current_transactions
         print("current_block.transactions  = ", current_block.transactions )
         # add new block on the chain
@@ -88,7 +116,6 @@ class Blockchain(object):
             self.blocks.append(current_block)
             print(current_block.hash)
             print("current_block.proof-of-work = ", current_block.nonce)
-            print("current block . transaction = ", current_block.transactions)
             return True
         else:
             return False
@@ -114,7 +141,7 @@ class Blockchain(object):
         if not nodes: # set() is empty
             return True
         else:
-            for i  in range(2200,2203):
+            for i  in range(2200,2210):
                 # print("node = ", node)
                 response = requests.get(f'http://172.30.0.1:{i}/blocks')
 
@@ -223,10 +250,13 @@ class Blockchain(object):
                         }
                         print("before send new block to broadcast: ")
                         # self.udp.sendto(block_string.encode(), ("255.255.255.255", 5555))
-                        for i in range(2200, 2203):
-                            r = requests.post(f'http://172.30.0.1:{i}/nodes/update', data=json.dumps(block_json), headers=config.headers)
-                            logging.warning('ket qua sau khi update')
-                            logging.warning(r.text)
+                        for i in range(2200, 2210):
+                            try:
+                                r = requests.post(f'http://172.30.0.1:{i}/nodes/update', data=json.dumps(block_json), headers=config.headers)
+                                logging.warning('ket qua sau khi update')
+                                logging.warning(r.text)
+                            except:
+                                pass
                         count_time = 0
                 time.sleep(1)
    
@@ -254,9 +284,9 @@ class Blockchain(object):
             if len(list(self.queue_mine_transaction_wait.queue)) == 0:
                 return jsonify(self.info_current_block())
             else:
-                return jsonify({'status': 'in process'})
+                return jsonify('successful')
         else:
-            return jsonify({'status': 'failed'})
+            return jsonify('failed')
 
 
     def get_current_block(self):
@@ -320,6 +350,24 @@ class Blockchain(object):
             }
         return jsonify(result)           
 
+
+    def get_transaction_by_account(self, account):
+        result = []
+        for i in self.blocks:
+            for j in i.transactions:
+                if j['from'] == account:
+                    result.append(j)
+        return jsonify({'result':result})
+
+
+    def get_transaction(self, transaction_hash):
+        result = []
+        for i in self.blocks:
+            for j in i.transactions:
+                if j['transaction_hash'] == transaction_hash:
+                    result = j
+        return jsonify({'result': result})
+        
 
     def run(self, host='0.0.0.0'):
         logging.info('Starting...')
