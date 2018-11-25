@@ -43,7 +43,7 @@ class Blockchain(object):
 
         self.queue_mine_transaction_wait = Queue()
         self.queue_mine_transaction = Queue()
-    
+        self.out_node_set = set()
         
     def proof_of_work(self, block):
         block.nonce = 0
@@ -124,12 +124,29 @@ class Blockchain(object):
 
     def register_node(self):
         nodes = request.json.get('nodes')
-        for url_node in nodes:
-            parsed_url = urlparse(url_node)
-            if parsed_url.netloc and parsed_url.scheme:
-                self.nodes.add(parsed_url.netloc) 
-            elif parsed_url.path:
-                self.nodes.add(parsed_url.path)
+        out_node = request.json.get('out_nodes')
+        print("node ahihi = ", nodes)
+        print("out_nodes ahihi = ", out_node)
+        if nodes:
+            for url_node in nodes:
+                if url_node not in self.nodes:
+                    print("add node:", url_node)
+                    parsed_url = urlparse(url_node)
+                    if parsed_url.netloc and parsed_url.scheme:
+                        self.nodes.add(parsed_url.netloc) 
+                    elif parsed_url.path:
+                        self.nodes.add(parsed_url.path)
+            print("register: ", self.nodes)
+        if out_node:
+            for url_node in out_node:
+                print("out node:", url_node)
+                if url_node in self.nodes:
+                    parsed_url = urlparse(url_node)
+                    if parsed_url.netloc and parsed_url.scheme:
+                        self.nodes.remove(parsed_url.netloc) 
+                    elif parsed_url.path:
+                        self.nodes.remove(parsed_url.path)
+        
         return jsonify("added")
 
 
@@ -203,66 +220,96 @@ class Blockchain(object):
 
     def udp_broadcast(self):
         while True:
-            # self.udp.sendto(b'hello', ("255.255.255.255", 5555))
-            # # print("hello")
             time.sleep(1)
-            # join in network
-            
             for i in range(2200, 2206):
-                print(" i  = ", i)
+                print(" i ai = ", i)
                 try:
                     r = requests.get(f'http://172.30.0.1:{i}/join')
                     url_node = r.url
                     parsed_url = urlparse(url_node)
+                    print("self.nodes = ", self.nodes)
                     if parsed_url.netloc and parsed_url.scheme and parsed_url.netloc not in self.nodes:
                         self.nodes.add(parsed_url.netloc) 
-                        try:
-                            for u in self.nodes:
+                        print("sau khi add self.nodes:", self.nodes)
+                        
+                        for u in self.nodes:
+                            try:
                                 nodes = list(self.nodes)
-                                data = {'nodes': nodes}
+                                data = {'nodes': nodes, 'out_nodes': list(self.out_node_set)}
                                 print("data = ", data)
                                 re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
                                 print("re = ", re.url, "  -----  ", re.text)
-                            print(" NEW NODE i =",i , " url = ", r.url)
-                        except:
-                            pass
-                    else:
-                        print("Testing  i = ", i)
-                        break
+                            
+                            except:
+                                print(" U sai: ", u)
+                                self.out_node_set.add(u)
+                                print(self.out_node_set)
+                                pass
+                    elif parsed_url.netloc in self.nodes:
+                        for u in self.nodes:
+                            try:
+                                nodes = list(self.nodes)
+                                data = {'nodes': nodes, 'out_nodes': list(self.out_node_set)}
+                                print("OUT DATA = ", data)
+                                re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
+                                print("RE = ", re.url, "  -----  ", re.text)
+                            
+                            except:
+                                print(" U saiii: ", u)
+                                self.out_node_set.add(u)
+                                print(self.out_node_set)
+                                pass
+                    
 
                 except:
                     pass
                 if i == 2205:
                     break
                 
-                
             for i in range(2206, 2211):
-                print(" i  = ", i)
+                print(" i ai = ", i)
                 try:
                     r = requests.get(f'http://172.31.0.1:{i}/join')
-                    
                     url_node = r.url
                     parsed_url = urlparse(url_node)
+                    print("self.nodes = ", self.nodes)
                     if parsed_url.netloc and parsed_url.scheme and parsed_url.netloc not in self.nodes:
                         self.nodes.add(parsed_url.netloc) 
-                        try:
-                            for u in self.nodes:
+                        print("sau khi add self.nodes:", self.nodes)
+                        
+                        for u in self.nodes:
+                            try:
                                 nodes = list(self.nodes)
-                                data = {'nodes': nodes}
+                                data = {'nodes': nodes, 'out_nodes': list(self.out_node_set)}
                                 print("data = ", data)
                                 re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
                                 print("re = ", re.url, "  -----  ", re.text)
-                            print(" NEW NODE i =",i , " url = ", r.url)
-                        except:
-                            pass
-                    else:
-                        print("Testing  i = ", i)
-                        break
-
+                            
+                            except:
+                                print(" U sai: ", u)
+                                self.out_node_set.add(u)
+                                print(self.out_node_set)
+                                pass
+                    elif parsed_url.netloc in self.nodes:
+                        for u in self.nodes:
+                            try:
+                                nodes = list(self.nodes)
+                                data = {'nodes': nodes, 'out_nodes': list(self.out_node_set)}
+                                print("OUT DATA = ", data)
+                                re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
+                                print("RE = ", re.url, "  -----  ", re.text)
+                            
+                            except:
+                                print(" U saiii: ", u)
+                                self.out_node_set.add(u)
+                                print(self.out_node_set)
+                                pass
+                
                 except:
                     pass
                 if i == 2210:
                     break
+            self.out_node_set.clear()   
 
 
     # def udp_listen(self):
@@ -276,14 +323,6 @@ class Blockchain(object):
     
 
     def join_in(self):
-        # while True:
-            # u = request.headers
-            # url_node = request.url
-            # parsed_url = urlparse(url_node)
-            # if parsed_url.netloc and parsed_url.scheme and parsed_url.netloc not in self.nodes:
-                # self.nodes.add(parsed_url.netloc) 
-                # logging.warning("A new node %s", parsed_url.netloc)
-           
         return jsonify("OK")
         
 
