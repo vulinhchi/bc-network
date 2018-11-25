@@ -38,6 +38,8 @@ class Blockchain(object):
         self.http.route('/nodes/update', methods=['POST'])(self.update_block)
         self.http.route('/transactions/<string:account>', methods=['GET'])(self.get_transaction_by_account)
         self.http.route('/transaction/<string:transaction_hash>', methods=['GET'])(self.get_transaction)
+        self.http.route('/join',  methods=['GET'])(self.join_in)
+        self.http.route('/nodes/register',  methods=['PATCH'])(self.register_node)
 
         self.queue_mine_transaction_wait = Queue()
         self.queue_mine_transaction = Queue()
@@ -120,16 +122,15 @@ class Blockchain(object):
         else:
             return False
 
-    def register_node(self, url_node):
-        parsed_url = urlparse(url_node)
-        if parsed_url.netloc and parsed_url.scheme:
-            self.nodes.add(parsed_url.netloc) 
-            return True
-        elif parsed_url.path:
-            self.nodes.add(parsed_url.path)
-            return True
-        else:
-            return False # invalid URL
+    def register_node(self):
+        nodes = request.json.get('nodes')
+        for url_node in nodes:
+            parsed_url = urlparse(url_node)
+            if parsed_url.netloc and parsed_url.scheme:
+                self.nodes.add(parsed_url.netloc) 
+            elif parsed_url.path:
+                self.nodes.add(parsed_url.path)
+        return jsonify("added")
 
 
     def resolve_conflicts(self):
@@ -202,20 +203,89 @@ class Blockchain(object):
 
     def udp_broadcast(self):
         while True:
-            self.udp.sendto(b'hello', ("255.255.255.255", 5555))
+            # self.udp.sendto(b'hello', ("255.255.255.255", 5555))
+            # # print("hello")
             time.sleep(1)
-           
-
-    def udp_listen(self):
-        while True:
-            message, remote = self.udp.recvfrom(10)
-            address , _ = remote
-            if message == b'hello' and address not in self.nodes:
-                self.nodes.add(address)
-                logging.warning('Peer discover: %s', remote)
+            # join in network
             
-                
+            for i in range(2200, 2206):
+                print(" i  = ", i)
+                try:
+                    r = requests.get(f'http://172.30.0.1:{i}/join')
+                    url_node = r.url
+                    parsed_url = urlparse(url_node)
+                    if parsed_url.netloc and parsed_url.scheme and parsed_url.netloc not in self.nodes:
+                        self.nodes.add(parsed_url.netloc) 
+                        try:
+                            for u in self.nodes:
+                                nodes = list(self.nodes)
+                                data = {'nodes': nodes}
+                                print("data = ", data)
+                                re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
+                                print("re = ", re.url, "  -----  ", re.text)
+                            print(" NEW NODE i =",i , " url = ", r.url)
+                        except:
+                            pass
+                    else:
+                        print("Testing  i = ", i)
+                        break
 
+                except:
+                    pass
+                if i == 2205:
+                    break
+                
+                
+            for i in range(2206, 2211):
+                print(" i  = ", i)
+                try:
+                    r = requests.get(f'http://172.31.0.1:{i}/join')
+                    
+                    url_node = r.url
+                    parsed_url = urlparse(url_node)
+                    if parsed_url.netloc and parsed_url.scheme and parsed_url.netloc not in self.nodes:
+                        self.nodes.add(parsed_url.netloc) 
+                        try:
+                            for u in self.nodes:
+                                nodes = list(self.nodes)
+                                data = {'nodes': nodes}
+                                print("data = ", data)
+                                re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
+                                print("re = ", re.url, "  -----  ", re.text)
+                            print(" NEW NODE i =",i , " url = ", r.url)
+                        except:
+                            pass
+                    else:
+                        print("Testing  i = ", i)
+                        break
+
+                except:
+                    pass
+                if i == 2210:
+                    break
+
+
+    # def udp_listen(self):
+    #     while True:
+    #         message, remote = self.udp.recvfrom(10)
+    #         address , _ = remote
+    #         if message == b'hello' and address not in self.nodes:
+    #             # self.nodes.add(address)
+    #             logging.warning('Peer discover: %s', remote)
+            
+    
+
+    def join_in(self):
+        # while True:
+            # u = request.headers
+            # url_node = request.url
+            # parsed_url = urlparse(url_node)
+            # if parsed_url.netloc and parsed_url.scheme and parsed_url.netloc not in self.nodes:
+                # self.nodes.add(parsed_url.netloc) 
+                # logging.warning("A new node %s", parsed_url.netloc)
+           
+        return jsonify("OK")
+        
 
     def test_update(self):
         return jsonify({'status': 'ok roi do'})
@@ -375,11 +445,11 @@ class Blockchain(object):
         watch_miner = Thread(target=self.mine)
         watch_miner.start()
         
-        udp_listen = Thread(target=self.udp_listen)
+        # udp_listen = Thread(target=self.join_in)
         udp_broadcast = Thread(target=self.udp_broadcast)
 
         udp_broadcast.start()
-        udp_listen.start()
+        # udp_listen.start()
         self.http.run(host=host, port = 4444)
         # udp_broadcast.join()
         # udp_listen.join()
