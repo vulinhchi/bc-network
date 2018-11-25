@@ -3,7 +3,7 @@ import sys
 from bc_network import my_blockchain
 
 
-logging.basicConfig(level = logging.INFO)
+logging.basicConfig(level = logging.WARNING)
 
 
 # register a new node. a new node need to get all the chain of BC like the first node
