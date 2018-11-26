@@ -15,6 +15,9 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA
 import base64
 
+from ast import literal_eval
+
+
 Block = my_block.Block
 
 class Blockchain(object):
@@ -72,17 +75,33 @@ class Blockchain(object):
             pub = _data['public_key']
             signature = _data['signature']
             content = _data['text']
-            print(" dât = ", _data)
-            pub_import = RSA.importKey(pub.encode())
-            h = SHA.new(content.encode())
             
-            # chuyen signature tu bytes >> string
+            # convert key from string >> bytes (base64)
+            pub_bytes = pub.encode()
+        
+            # bytes(of base64) >> bytes (like tuple)
+            pub_tuple = base64.b64decode(pub_bytes)
             
-            sign1 = signature.encode() # bytes
-            signatue_ = base64.b64decode(sign1)
+            pub_pair = literal_eval(pub_tuple.decode())
             
-            verifier = PKCS1_v1_5.new(pub_import)
-            result = verifier.verify(h, signatue_)
+            n = pub_pair[1] # int
+            e = pub_pair[0]
+
+            #verify:
+            result = my_account.verify(content, int(signature), e, n)
+
+           
+            # print(" dât = ", _data)
+            # pub_import = RSA.importKey(pub.encode())
+            # h = SHA.new(content.encode())
+            
+            # # chuyen signature tu bytes >> string
+            
+            # sign1 = signature.encode() # bytes
+            # signatue_ = base64.b64decode(sign1)
+            
+            # verifier = PKCS1_v1_5.new(pub_import)
+            # result = verifier.verify(h, signatue_)
             print("ket qua: ", result)
             if result == True:
                 number_of_transaction_success += 1
@@ -252,6 +271,7 @@ class Blockchain(object):
                                 print("data = ", data)
                                 re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
                                 print("re = ", re.url, "  -----  ", re.text)
+                                
                                 print("================================ ")
                             except:
                                 # print(" U sai: ", u)
