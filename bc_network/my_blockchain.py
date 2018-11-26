@@ -125,28 +125,36 @@ class Blockchain(object):
     def register_node(self):
         nodes = request.json.get('nodes')
         out_node = request.json.get('out_nodes')
+        
         # print("node ahihi = ", nodes)
-        # print("out_nodes ahihi = ", out_node)
+        print("out_nodes ahihi = ", out_node)
         if nodes:
             for url_node in nodes:
                 if url_node not in self.nodes:
-                    # print("add node:", url_node)
+                    print("chua co: ", url_node)
                     parsed_url = urlparse(url_node)
                     if parsed_url.netloc and parsed_url.scheme:
                         self.nodes.add(parsed_url.netloc) 
                     elif parsed_url.path:
                         self.nodes.add(parsed_url.path)
-            print("register: ", self.nodes)
+                    print("sau khi add: ", self.nodes)
+            
         if out_node:
             for url_node in out_node:
-                print("out node:", url_node)
                 if url_node in self.nodes:
                     parsed_url = urlparse(url_node)
                     if parsed_url.netloc and parsed_url.scheme:
                         self.nodes.remove(parsed_url.netloc) 
                     elif parsed_url.path:
                         self.nodes.remove(parsed_url.path)
+                    print("remove dk roi")
         
+        print("register: ", self.nodes)
+        print("OUT: ", self.out_node_set)
+        # add blocks to new nodes:
+        print("resolve conflicts: ",self.resolve_conflicts())
+        print("url_call: ",request.url)
+        print("------------------------------------")
         return jsonify("added")
 
 
@@ -154,38 +162,42 @@ class Blockchain(object):
         nodes = self.nodes
         new_chain = None
         max_length = len(self.blocks) # count number of block, not include transaction in block
-        print(nodes)
+        print("list node: ", nodes)
         print("max length = ", max_length )
         if not nodes: # set() is empty
             return True
         else:
-            for i  in range(2200,2210):
-                # print("node = ", node)
-                response = requests.get(f'http://172.30.0.1:{i}/blocks')
+            for i in nodes:
+                try:
+                    print("node = ", i)
+                    response = requests.get(f'http://{i}/blocks')
 
-                if response.status_code == 200:
-                    chain = response.json()
-                    print('DO DAI TRONG NODE ',i , " la ",len(chain))
-                    if len(chain) > max_length:
-                        max_length= len(chain)
-                        new_chain = chain
+                    if response.status_code == 200:
+                        chain = response.json()
+                        print('DO DAI TRONG NODE ',i , " la ",len(chain))
+                        if len(chain) > max_length:
+                            max_length= len(chain)
+                            new_chain = chain
+                except:
+                    print(" failed: ", i)
+                    pass
                         
             if new_chain:
+                self.blocks.clear()
                 print("new chain = ", new_chain)
                 for i in new_chain:
-                    for old in self.blocks:
-                        if i['index'] != old.index:
-                            block_item = Block(
-                                i['index'],
-                                i['previous_hash'],
-                                i['timestamp'], 
-                                i['proof-of-work'], 
-                                i['transactions'], 
-                                i['hash'])
-                            self.blocks.append(block_item)
+                    block_item = Block(
+                        i['index'],
+                        i['previous_hash'],
+                        i['timestamp'], 
+                        i['proof-of-work'], 
+                        i['transactions'], 
+                        i['hash'])
+                    self.blocks.append(block_item)
                 
+                return False
+            else:
                 return True
-            return False
 
 
     def info_current_block(self):
@@ -220,14 +232,15 @@ class Blockchain(object):
 
     def udp_broadcast(self):
         while True:
-            time.sleep(1)
+            time.sleep(2)
             for i in range(2200, 2206):
                 # print(" i ai = ", i)
                 try:
                     r = requests.get(f'http://172.30.0.1:{i}/join')
                     url_node = r.url
                     parsed_url = urlparse(url_node)
-                    # print("self.nodes = ", self.nodes)
+                    
+                    print("NEW CALL: ", url_node)
                     if parsed_url.netloc and parsed_url.scheme and parsed_url.netloc not in self.nodes:
                         self.nodes.add(parsed_url.netloc) 
                         # print("sau khi add self.nodes:", self.nodes)
@@ -235,29 +248,29 @@ class Blockchain(object):
                         for u in self.nodes:
                             try:
                                 nodes = list(self.nodes)
-                                data = {'nodes': nodes, 'out_nodes': list(self.out_node_set)}
-                                # print("data = ", data)
+                                data = {'nodes': nodes, 'out_nodes': None}
+                                print("data = ", data)
                                 re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
                                 print("re = ", re.url, "  -----  ", re.text)
-                            
+                                print("================================ ")
                             except:
                                 # print(" U sai: ", u)
-                                self.out_node_set.add(u)
+                                # self.out_node_set.add(u)
                                 # print(self.out_node_set)
                                 pass
                     elif parsed_url.netloc in self.nodes:
                         for u in self.nodes:
                             try:
                                 nodes = list(self.nodes)
-                                data = {'nodes': nodes, 'out_nodes': list(self.out_node_set)}
-                                # print("OUT DATA = ", data)
+                                data = {'nodes': None, 'out_nodes': list(self.out_node_set)}
+                                print("OUT DATA = ", data)
                                 re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
                                 # print("RE = ", re.url, "  -----  ", re.text)
                             
                             except:
                                 # print(" U saiii: ", u)
                                 self.out_node_set.add(u)
-                                # print(self.out_node_set)
+                                # print("bi out: ",self.out_node_set)
                                 pass
                     
 
@@ -272,7 +285,8 @@ class Blockchain(object):
                     r = requests.get(f'http://172.31.0.1:{i}/join')
                     url_node = r.url
                     parsed_url = urlparse(url_node)
-                    # print("self.nodes = ", self.nodes)
+                    
+                    print("NEW CALL: ", url_node)
                     if parsed_url.netloc and parsed_url.scheme and parsed_url.netloc not in self.nodes:
                         self.nodes.add(parsed_url.netloc) 
                         # print("sau khi add self.nodes:", self.nodes)
@@ -280,29 +294,30 @@ class Blockchain(object):
                         for u in self.nodes:
                             try:
                                 nodes = list(self.nodes)
-                                data = {'nodes': nodes, 'out_nodes': list(self.out_node_set)}
-                                # print("data = ", data)
+                                data = {'nodes': nodes, 'out_nodes': None}
+                                print("data = ", data)
                                 re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
-                                # print("re = ", re.url, "  -----  ", re.text)
-                            
+                                print("re = ", re.url, "  -----  ", re.text)
+                                print("------------------------------------")
+                                print("================================ ")
                             except:
                                 # print(" U sai: ", u)
-                                self.out_node_set.add(u)
+                                # self.out_node_set.add(u)
                                 # print(self.out_node_set)
                                 pass
                     elif parsed_url.netloc in self.nodes:
                         for u in self.nodes:
                             try:
                                 nodes = list(self.nodes)
-                                # data = {'nodes': nodes, 'out_nodes': list(self.out_node_set)}
-                                # print("OUT DATA = ", data)
+                                data = {'nodes': None, 'out_nodes': list(self.out_node_set)}
+                                print("OUT DATA = ", data)
                                 re = requests.patch(f'http://{u}/nodes/register', data=json.dumps(data), headers=config.headers)
                                 # print("RE = ", re.url, "  -----  ", re.text)
                             
                             except:
                                 # print(" U saiii: ", u)
                                 self.out_node_set.add(u)
-                                print(self.out_node_set)
+                                # print("bi out: ",self.out_node_set)
                                 pass
                 
                 except:
