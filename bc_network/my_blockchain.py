@@ -74,23 +74,11 @@ class Blockchain(object):
             # verify transaction: check signature, mess, publickey
             pub = _data['public_key']
             signature = _data['signature']
-            content = _data['text']
+            encrypt_content = _data['text']
             
-            # convert key from string >> bytes (base64)
-            pub_bytes = pub.encode()
-        
-            # bytes(of base64) >> bytes (like tuple)
-            pub_tuple = base64.b64decode(pub_bytes)
-            
-            pub_pair = literal_eval(pub_tuple.decode())
-            
-            n = pub_pair[1] # int
-            e = pub_pair[0]
-
             #verify:
-            result = my_account.verify(content, int(signature), e, n)
+            result = my_account.verify(int(encrypt_content), int(signature), pub)
 
-           
             # print(" dât = ", _data)
             # pub_import = RSA.importKey(pub.encode())
             # h = SHA.new(content.encode())
@@ -524,6 +512,6 @@ class Blockchain(object):
 
         udp_broadcast.start()
         # udp_listen.start()
-        self.http.run(host=host, port = 4444)
+        self.http.run(host=host, port = 4445)
         # udp_broadcast.join()
         # udp_listen.join()
