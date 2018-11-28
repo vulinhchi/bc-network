@@ -40,6 +40,8 @@ class Blockchain(object):
         self.http.route('/nodes/resolve', methods=['GET'])(self.consensus)
         self.http.route('/nodes/update', methods=['POST'])(self.update_block)
         self.http.route('/transactions/<string:account>', methods=['GET'])(self.get_transaction_by_account)
+        self.http.route('/transactions/<string:account>/b_side', methods=['GET'])(self.get_transaction_by_account_b_side)
+        
         self.http.route('/transaction/<string:transaction_hash>', methods=['GET'])(self.get_transaction)
         self.http.route('/join',  methods=['GET'])(self.join_in)
         self.http.route('/nodes/register',  methods=['PATCH'])(self.register_node)
@@ -492,6 +494,15 @@ class Blockchain(object):
         return jsonify({'result':result})
 
 
+    def get_transaction_by_account_b_side(self, account):
+        result = []
+        for i in self.blocks:
+            for j in i.transactions:
+                if j['to'] == account:
+                    result.append(j)
+        return jsonify({'result':result})
+
+
     def get_transaction(self, transaction_hash):
         result = []
         for i in self.blocks:
@@ -512,6 +523,6 @@ class Blockchain(object):
 
         udp_broadcast.start()
         # udp_listen.start()
-        self.http.run(host=host, port = 4445)
+        self.http.run(host=host, port = 4444)
         # udp_broadcast.join()
         # udp_listen.join()
