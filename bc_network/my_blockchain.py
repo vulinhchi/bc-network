@@ -70,6 +70,7 @@ class Blockchain(object):
             _to = queue_mine_transaction.get()
             _time = str(datetime.now())
             _data = queue_mine_transaction.get()
+            _amount = queue_mine_transaction.get()
             number_of_transaction += 1
             print("new len  = ", len(list(queue_mine_transaction.queue)))
             
@@ -77,6 +78,7 @@ class Blockchain(object):
             pub = _data['public_key']
             signature = _data['signature']
             encrypt_content = _data['text']
+
             
             #verify:
             result = my_account.verify(int(encrypt_content), int(signature), pub)
@@ -102,7 +104,8 @@ class Blockchain(object):
                     'to': _to,
                     'data': _data,
                     'transaction_hash': hashlib.sha256(items).hexdigest(),
-                    'time': _time
+                    'time': _time,
+                    'amount': _amount
                 }
                 print(tx)
                 self.current_transactions.append(tx)
@@ -369,7 +372,6 @@ class Blockchain(object):
                         config.transfer_queue(self.queue_mine_transaction_wait, self.queue_mine_transaction)
                         print('do dai cua q2 = ',len(list(self.queue_mine_transaction.queue)))
                         self.add_transaction(self.queue_mine_transaction) 
-                        
                         current_block = self.blocks[-1]
                         
             # auto update new mined block to other nodes
@@ -410,11 +412,20 @@ class Blockchain(object):
         _from = request.json.get('from')
         _to = request.json.get('to')
         _data = request.json.get('data')
-        if _from and _to and _data:
+        _amount = request.json.get('amount')
+        print("amount : ",_amount)
+        print(type(_amount))
+        print(_from)
+        print(_to)
+        print(_data)
+        if _from and _to and _data and str(_amount):
             print(" co nhan duoc du lieu dau vao !")
             self.queue_mine_transaction_wait.put(_from)
             self.queue_mine_transaction_wait.put(_to)
             self.queue_mine_transaction_wait.put(_data)
+            self.queue_mine_transaction_wait.put(_amount)
+            
+            print('do dai cua ...wailt = ',len(list(self.queue_mine_transaction.queue)))
             if len(list(self.queue_mine_transaction_wait.queue)) == 0:
                 return jsonify(self.info_current_block())
             else:
