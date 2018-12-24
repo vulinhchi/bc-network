@@ -12,6 +12,11 @@ def create_wallet_account(user_id):
     return acct.address, private_key.hex()
 
 
+def ascii_to_int(mess):
+	u = hexlify(mess.encode()).decode()
+	return int(u,16)
+
+
 def int_to_ascii(mess):
 	return unhexlify(format(mess,"x")).decode()
 
@@ -29,3 +34,4 @@ def verify(mess, signature, pub): # pub: key get from the blockchain/DB (string)
     
     un_signature = pow(signature, e, n)
     return un_signature == mess
+

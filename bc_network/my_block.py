@@ -16,12 +16,11 @@ class Block():
         cal = str(self.index) + str(self.previous_hash) + str(self.timestamp) + str(self.nonce)
         cal = cal.encode()
         cal_hash = hashlib.sha1(cal).hexdigest()
-        # self.hash = cal_hash
         return cal_hash
 
     
     @staticmethod
-    def from_previous(block, data):
+    def from_previous(block):
         return Block(block.index + 1, block.hash, str(datetime.now()),0)
 
 
