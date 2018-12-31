@@ -13,7 +13,7 @@ class Block():
         self.hash = hashvalue
     
     def calculate_hash(self):
-        cal = str(self.index) + str(self.previous_hash) + str(self.timestamp) + str(self.nonce)
+        cal = str(self.index) + str(self.previous_hash) + str(self.timestamp) + str(self.nonce) + str(self.transactions)
         cal = cal.encode()
         cal_hash = hashlib.sha1(cal).hexdigest()
         return cal_hash
